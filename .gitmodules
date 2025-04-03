@@ -1,0 +1,12 @@
+[submodule "external/imgui"]
+	path = external/imgui
+	url = https://github.com/ocornut/imgui
+[submodule "external/glaze"]
+	path = external/glaze
+	url = https://github.com/stephenberry/glaze
+[submodule "external/avir"]
+	path = external/avir
+	url = https://github.com/avaneev/avir
+[submodule "external/thread-pool"]
+	path = external/thread-pool
+	url = https://github.com/bshoshany/thread-pool

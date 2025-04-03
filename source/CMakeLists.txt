@@ -1,0 +1,5 @@
+add_subdirectory(reshade)
+add_subdirectory(reframework)
+
+add_custom_target(MHWildsHighQualityPhoto_Mod 
+    DEPENDS MHWildsHighQualityPhoto MHWildsHighQualityPhoto_Reshade)
