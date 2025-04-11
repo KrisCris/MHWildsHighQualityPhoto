@@ -15,8 +15,10 @@ reshade::api::swapchain *current_swapchain = nullptr;
 
 int g_hdr_bit_depths = 11; // Default to 11-bit depth for HDR
 ScreenCaptureFinishFunc g_finish_callback = nullptr;
+bool screenshot_requested = false;
 
 std::atomic_bool is_hdr_converting = false;
+bool g_screenshot_before_reshade = false;
 
 std::string get_current_dll_path() {
     char path[MAX_PATH];
@@ -37,22 +39,6 @@ std::string get_current_dll_path() {
     }
 
     return std::string(path);
-}
-
-extern "C" int request_screen_capture(ScreenCaptureFinishFunc finish_callback, int hdr_bit_depths) {
-    if (g_finish_callback) {
-        return RESULT_SCREEN_CAPTURE_IN_PROGRESS;
-    }
-
-    g_finish_callback = finish_callback;
-    g_hdr_bit_depths = hdr_bit_depths;
-
-    return RESULT_SCREEN_CAPTURE_SUBMITTED;
-}
-
-
-extern "C" void set_reshade_filters_enable(bool should_enable) {
-    current_reshade_runtime->set_effects_state(should_enable);
 }
 
 static void hdr_convert_thread(std::uint8_t * pixels, std::uint32_t width, std::uint32_t height, reshade::api::format format, int hdr_bit_depths) {
@@ -140,18 +126,44 @@ static void hdr_convert_thread(std::uint8_t * pixels, std::uint32_t width, std::
     is_hdr_converting = false;
 }
 
-static void on_reshade_effects_finished(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list,
-    reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb)
+static bool is_screenshot_requested() {
+    return screenshot_requested;
+}
+
+static void capture_screenshot_impl();
+
+static void on_present_without_effects_applied(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain, const reshade::api::rect *source_rect,
+    const reshade::api::rect *dest_rect, uint32_t dirty_rect_count, const reshade::api::rect *dirty_rect) {
+    current_swapchain = swapchain;
+
+    if (is_screenshot_requested()) {
+        if (g_screenshot_before_reshade) {
+            capture_screenshot_impl();
+        }
+    }
+}
+
+static void on_present_with_effects_applied(reshade::api::effect_runtime *runtime)
 {
     current_reshade_runtime = runtime;
 
-    if (!g_finish_callback) {
+    if (is_screenshot_requested()) {
+        if (!g_screenshot_before_reshade) {
+            capture_screenshot_impl();
+        }
+    }
+}
+
+static void capture_screenshot_impl() {
+    if (!is_screenshot_requested()) {
         return;
     }
 
     if (is_hdr_converting) {
         return;
     }
+
+    screenshot_requested = false;
 
     auto back_buffer = current_reshade_runtime->get_current_back_buffer();
     auto resource_description = current_reshade_runtime->get_device()->get_resource_desc(back_buffer);
@@ -167,6 +179,7 @@ static void on_reshade_effects_finished(reshade::api::effect_runtime *runtime, r
     
     auto bytes_per_pixel = (format == reshade::api::format::r16g16b16a16_float) ? 8 : 4; // 4 bytes for RGBA, 8 bytes for HDR scRGB
     auto pixels = new uint8_t[width * height * bytes_per_pixel]; // Assuming 4 bytes per pixel (RGBA)
+
     if (!current_reshade_runtime->capture_screenshot(pixels)) {
         if (g_finish_callback) {
             g_finish_callback(RESULT_SCREEN_RESHADE_CAPTURE_FAILURE, 0, 0, nullptr);
@@ -191,11 +204,23 @@ static void on_reshade_effects_finished(reshade::api::effect_runtime *runtime, r
     }
 }
 
-static void on_present(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain, const reshade::api::rect *source_rect,
-    const reshade::api::rect *dest_rect, uint32_t dirty_rect_count, const reshade::api::rect *dirty_rects) {
-    current_swapchain = swapchain;
+extern "C" int request_screen_capture(ScreenCaptureFinishFunc finish_callback, int hdr_bit_depths, bool screenshot_before_reshade) {
+    if (g_finish_callback) {
+        return RESULT_SCREEN_CAPTURE_IN_PROGRESS;
+    }
+
+    g_finish_callback = finish_callback;
+    g_hdr_bit_depths = hdr_bit_depths;
+    g_screenshot_before_reshade = screenshot_before_reshade;
+    screenshot_requested = true;
+
+    return RESULT_SCREEN_CAPTURE_SUBMITTED;
 }
- 
+
+extern "C" void set_reshade_filters_enable(bool should_enable) {
+    current_reshade_runtime->set_effects_state(should_enable);
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID)
 {
     switch (fdwReason)
@@ -208,13 +233,13 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID)
         // This registers a callback for the 'present' event, which occurs every time a new frame is presented to the screen.
         // The function signature has to match the type defined by 'reshade::addon_event_traits<reshade::addon_event::present>::decl'.
         // For more details check the inline documentation for each event in 'reshade_events.hpp'.
-        reshade::register_event<reshade::addon_event::reshade_finish_effects>(&on_reshade_effects_finished);
-        reshade::register_event<reshade::addon_event::present>(&on_present);
+        reshade::register_event<reshade::addon_event::present>(&on_present_without_effects_applied);
+        reshade::register_event<reshade::addon_event::reshade_present>(&on_present_with_effects_applied);
         break;
     case DLL_PROCESS_DETACH:
         // Optionally unregister the event callback that was previously registered during process attachment again.
-        reshade::unregister_event<reshade::addon_event::reshade_finish_effects>(&on_reshade_effects_finished);
-        reshade::unregister_event<reshade::addon_event::present>(&on_present);
+        reshade::unregister_event<reshade::addon_event::present>(&on_present_without_effects_applied);
+        reshade::unregister_event<reshade::addon_event::reshade_present>(&on_present_with_effects_applied);
         // And finally unregister the add-on from ReShade (this will automatically unregister any events and overlays registered by this add-on too).
         reshade::unregister_addon(hinstDLL);
         break;

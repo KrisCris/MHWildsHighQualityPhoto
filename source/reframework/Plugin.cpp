@@ -62,6 +62,7 @@ void Plugin::decide_and_set_screen_cap_or_override_inject(std::unique_ptr<FileIn
     reshade_addon_client->set_enable(!mod_settings->is_disable_high_quality_screen_capture());
     reshade_addon_client->set_lossless(should_lossless);
     reshade_addon_client->set_use_old_limit_size(false);
+    reshade_addon_client->set_hq_background_mode(mod_settings->quest_result_hq_background_mode);
 
     if (is_photo_mode) {
         reshade_addon_client->set_is_photo_mode(true);
@@ -231,6 +232,19 @@ static const char *get_photo_mode_image_quality_name(PhotoModeImageQuality quali
             return "Low quality + ReShade";
         case PhotoModeImageQuality_DoNotModify:
             return "Low quality (Same as without mod)";
+        default:
+            return "Unknown";
+    }
+}
+
+static const char *get_quest_result_hq_background_mode_name(QuestResultHQBackgroundMode mode) {
+    switch (mode) {
+        case ReshadePreapplied:
+            return "ReShade Preapplied";
+        case NoReshade:
+            return "No ReShade";
+        case ReshadeApplyLater:
+            return "Normal (ReShade Apply Later)";
         default:
             return "Unknown";
     }
@@ -428,6 +442,40 @@ void Plugin::draw_user_interface() {
             igCheckbox("Use Lossless Image for Quest Result##UseLosslessQuestResult", &mod_settings->use_lossless_image_for_quest_result);
             if (igIsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                 igSetTooltip("This will result in crisp quest result background, but will create a visible stutter in case the lossless image size is heavy (eg 4K image)");
+            }
+
+            igText("Quest Result HQ Background Mode");
+            igSameLine(0.0f, 5.0f);
+
+            if (igBeginCombo("##QuestResultHQBackgroundMode", get_quest_result_hq_background_mode_name(mod_settings->quest_result_hq_background_mode), ImGuiComboFlags_None)) {
+                bool selected = false;
+
+                if (igSelectable_BoolPtr(get_quest_result_hq_background_mode_name(QuestResultHQBackgroundMode::ReshadeApplyLater), &selected, ImGuiSelectableFlags_None, ImVec2(0, 0))) {
+                    mod_settings->quest_result_hq_background_mode = ReshadeApplyLater;
+                }
+
+                if (igSelectable_BoolPtr(get_quest_result_hq_background_mode_name(QuestResultHQBackgroundMode::ReshadePreapplied), &selected, ImGuiSelectableFlags_None, ImVec2(0, 0))) {
+                    mod_settings->quest_result_hq_background_mode = ReshadePreapplied;
+                }
+
+                if (igSelectable_BoolPtr(get_quest_result_hq_background_mode_name(QuestResultHQBackgroundMode::NoReshade), &selected, ImGuiSelectableFlags_None, ImVec2(0, 0))) {
+                    mod_settings->quest_result_hq_background_mode = NoReshade;
+                }
+
+                igEndCombo();
+            }
+
+            if (mod_settings->quest_result_hq_background_mode == ReshadePreapplied) {
+                igTextWrapped("The mod will take a screenshot with ReShade applied. When this screenshot is shown on quest result screen, ReShade will be disabled.");
+                igTextWrapped("This ensures some ReShade effects that relies on the depth buffer displays correctly. Use this if you have problem with the default mode.");
+            }
+
+            if (mod_settings->quest_result_hq_background_mode == ReshadeApplyLater) {
+                igTextWrapped("The mod will take a screenshot without ReShade. When this screenshot is shown on quest result screen, the image will be shown with ReShade applied.");
+            }
+
+            if (mod_settings->quest_result_hq_background_mode == NoReshade) {
+                igTextWrapped("The mod will take a screenshot without ReShade. When this screenshot is shown on quest result screen, the image will be shown without ReShade applied.");
             }
 
             igTreePop();

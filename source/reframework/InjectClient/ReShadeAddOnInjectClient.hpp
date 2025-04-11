@@ -3,6 +3,7 @@
 #define NOMINMAX
 
 #include "../WebPCaptureInjectClient.hpp"
+#include "../QuestResultHQBackgroundMode.hpp"
 #include "../../reshade/Plugin.h"
 
 #include <reframework/API.hpp>
@@ -21,13 +22,14 @@ private:
 
     HMODULE reshade_module = nullptr;
 
-    typedef int (*request_screen_capture_func)(ScreenCaptureFinishFunc finish_callback, int hdr_bit_depths);
+    typedef int (*request_screen_capture_func)(ScreenCaptureFinishFunc finish_callback, int hdr_bit_depths, bool screenshot_before_reshade);
     typedef void (*set_reshade_filters_enable_func)(bool should_enable);
 
     request_screen_capture_func request_reshade_screen_capture = nullptr;
     set_reshade_filters_enable_func set_reshade_filters_enable = nullptr;
 
     std::unique_ptr<std::thread> webp_compress_thread = nullptr;
+    QuestResultHQBackgroundMode quest_result_hq_background_mode = QuestResultHQBackgroundMode::ReshadeApplyLater;
 
     bool is_enabled = true;
     bool should_lossless = false;
@@ -53,6 +55,8 @@ private:
     static int pre_open_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
     static int pre_close_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
     static void null_post(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr);
+
+    bool should_reshade_filters_disable_when_show_quest_result_ui() const;
 
 public:
     ~ReShadeAddOnInjectClient();
@@ -97,6 +101,14 @@ public:
 
     bool is_reshade_present() {
         return reshade_module != nullptr && request_reshade_screen_capture != nullptr;
+    }
+
+    void set_hq_background_mode(QuestResultHQBackgroundMode mode) {
+        quest_result_hq_background_mode = mode;
+    }
+
+    QuestResultHQBackgroundMode get_hq_background_mode() const {
+        return quest_result_hq_background_mode;
     }
 
     static ReShadeAddOnInjectClient* get_instance();

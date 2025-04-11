@@ -1,5 +1,6 @@
 #pragma once
 
+#include "QuestResultHQBackgroundMode.hpp"
 #include <string>
 
 enum PhotoModeImageQuality {
@@ -49,6 +50,8 @@ struct ModSettings {
 
     PhotoModeImageQuality photo_mode_image_quality = PhotoModeImageQuality_LowQualityApplyFilters;
 
+    QuestResultHQBackgroundMode quest_result_hq_background_mode = ReshadeApplyLater;
+
     bool dump_original_webp = false;
 
     bool disable_mod = false;
@@ -68,7 +71,8 @@ struct ModSettings {
             disable_high_quality_screen_capture != clone.disable_high_quality_screen_capture ||
             photo_mode_image_quality != clone.photo_mode_image_quality ||
             dump_original_webp != clone.dump_original_webp ||
-            disable_mod != clone.disable_mod;
+            disable_mod != clone.disable_mod ||
+            quest_result_hq_background_mode != clone.quest_result_hq_background_mode;
     }
 
     bool is_high_quality_photo_mode_enabled() const {

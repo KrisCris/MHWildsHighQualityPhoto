@@ -163,7 +163,10 @@ void ReShadeAddOnInjectClient::update() {
     if (!request_launched) {
         if (game_ui_controller->get_hiding_progress() >= START_CAPTURE_AFTER_HIDE_REACHED_PROGRESS) {
             if (is_reshade_present()) {
-                auto request_capture = request_reshade_screen_capture(capture_screenshot_callback, mod_settings->hdr_bits);
+                bool screenshot_before_reshade = quest_result_hq_background_mode == QuestResultHQBackgroundMode::NoReshade ||
+                    quest_result_hq_background_mode == QuestResultHQBackgroundMode::ReshadeApplyLater;
+
+                auto request_capture = request_reshade_screen_capture(capture_screenshot_callback, mod_settings->hdr_bits, screenshot_before_reshade);
                 if (request_capture != RESULT_SCREEN_CAPTURE_SUBMITTED) {
                     api->log_error("Request capture failed %d", request_capture);
                     finish_capture(false);
@@ -252,7 +255,7 @@ void ReShadeAddOnInjectClient::compress_webp_thread(std::uint8_t *data, int widt
     
     bool is_lossless = reshade_addon_client_instance->is_lossless();
 
-    std::uint8_t* result_temp;
+    std::uint8_t* result_temp = nullptr;
     std::size_t result_size = 0;
 
     std::size_t max_size = reshade_addon_client_instance->use_old_limit_size ? MaxSerializePhotoSizeOriginal : MaxSerializePhotoSize;
@@ -316,6 +319,11 @@ void ReShadeAddOnInjectClient::capture_screenshot_callback(int result, int width
         std::uint8_t* data_copy = new std::uint8_t[width * height * 4];
         std::memcpy(data_copy, data, width * height * 4);
 
+        // Clear alpha channels
+        for (int i = 0; i < width * height; ++i) {
+            data_copy[i * 4 + 3] = 0xFF; // Set alpha channel to 255 (opaque)
+        } 
+
         if (reshade_addon_client_instance->webp_compress_thread != nullptr) {
             reshade_addon_client_instance->webp_compress_thread->join();
             reshade_addon_client_instance->webp_compress_thread.reset();
@@ -343,8 +351,17 @@ void ReShadeAddOnInjectClient::null_post(void** ret_val, REFrameworkTypeDefiniti
     // No operation
 }
 
+bool ReShadeAddOnInjectClient::should_reshade_filters_disable_when_show_quest_result_ui() const {
+    return quest_result_hq_background_mode == QuestResultHQBackgroundMode::NoReshade ||
+           quest_result_hq_background_mode == QuestResultHQBackgroundMode::ReshadePreapplied;
+}
+
 int ReShadeAddOnInjectClient::pre_open_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
     if (!reshade_addon_client_instance->is_enabled) {
+        return REFRAMEWORK_HOOK_CALL_ORIGINAL;
+    }
+
+    if (!reshade_addon_client_instance->should_reshade_filters_disable_when_show_quest_result_ui()) {
         return REFRAMEWORK_HOOK_CALL_ORIGINAL;
     }
 
@@ -360,6 +377,10 @@ int ReShadeAddOnInjectClient::pre_open_quest_result_ui(int argc, void** argv, RE
 
 int ReShadeAddOnInjectClient::pre_close_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
     if (!reshade_addon_client_instance->is_enabled) {
+        return REFRAMEWORK_HOOK_CALL_ORIGINAL;
+    }
+
+    if (!reshade_addon_client_instance->should_reshade_filters_disable_when_show_quest_result_ui()) {
         return REFRAMEWORK_HOOK_CALL_ORIGINAL;
     }
 

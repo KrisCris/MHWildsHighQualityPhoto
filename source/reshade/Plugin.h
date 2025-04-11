@@ -11,5 +11,5 @@ const int RESULT_SCREEN_CAPTURE_HDR_FAILED = -6;
 const int RESULT_SCREEN_CAPTURE_SUCCESS = 0;
 const int RESULT_SCREEN_CAPTURE_SUBMITTED = 1;
 
-extern "C" __declspec(dllexport) int request_screen_capture(ScreenCaptureFinishFunc finish_callback, int hdr_bit_depths);
+extern "C" __declspec(dllexport) int request_screen_capture(ScreenCaptureFinishFunc finish_callback, int hdr_bit_depths, bool screenshot_before_reshade);
 extern "C" __declspec(dllexport) void set_reshade_filters_enable(bool should_enable);
