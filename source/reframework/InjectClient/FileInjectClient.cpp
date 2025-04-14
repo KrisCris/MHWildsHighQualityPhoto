@@ -7,9 +7,11 @@
 #include <reframework/API.hpp>
 
 bool FileInjectClient::provide_webp_data(bool is16x9, ProvideFinishedDataCallback provide_data_finish_callback) {
-    if (file_path.empty()) {
+    if (file_path.empty() || !is_requested) {
         return false;
     }
+
+    is_requested = false;
 
     auto& api = reframework::API::get();
 

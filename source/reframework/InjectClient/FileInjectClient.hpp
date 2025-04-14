@@ -8,9 +8,18 @@ class FileInjectClient : public WebPCaptureInjectClient {
 private:
     std::string file_path;
     bool limit_size = false;
+    bool is_requested = false;
 
 public:
     bool provide_webp_data(bool is16x9, ProvideFinishedDataCallback provide_data_finish_callback) override;
+
+    void set_requested() {
+        is_requested = true;
+    }
+
+    bool get_is_requested() const {
+        return is_requested;
+    }
 
     void set_file_path(const std::string& path) {
         file_path = path;

@@ -40,6 +40,7 @@ private:
     bool request_launched = false;
     bool slowmo_present = false;
     bool slowmo_present_cached = false;
+    bool is_requested = false;
 
 private:
     bool try_load_reshade();
@@ -105,6 +106,14 @@ public:
 
     void set_hq_background_mode(QuestResultHQBackgroundMode mode) {
         quest_result_hq_background_mode = mode;
+    }
+
+    void set_requested() {
+        is_requested = true;
+    }
+
+    bool get_requested() const {
+        return is_requested;
     }
 
     QuestResultHQBackgroundMode get_hq_background_mode() const {

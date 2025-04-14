@@ -56,6 +56,10 @@ struct ModSettings {
 
     bool disable_mod = false;
 
+    int hide_ui_before_capture_frame_count = 6;
+
+    std::string debug_file_postfix;
+
     bool data_changed(const ModSettings &clone) {
         return enable_override_album_image != clone.enable_override_album_image ||
             override_album_image_path != clone.override_album_image_path ||
@@ -72,7 +76,8 @@ struct ModSettings {
             photo_mode_image_quality != clone.photo_mode_image_quality ||
             dump_original_webp != clone.dump_original_webp ||
             disable_mod != clone.disable_mod ||
-            quest_result_hq_background_mode != clone.quest_result_hq_background_mode;
+            quest_result_hq_background_mode != clone.quest_result_hq_background_mode ||
+            hide_ui_before_capture_frame_count != clone.hide_ui_before_capture_frame_count;
     }
 
     bool is_high_quality_photo_mode_enabled() const {
@@ -87,6 +92,10 @@ struct ModSettings {
 #endif
     }
 
+    bool get_use_lossless_image_for_quest_result() const {
+        return true;
+    }
+
     PhotoModeImageQuality get_photo_mode_image_quality() const {
 #ifdef ENABLE_HIGH_QUALITY_PHOTO_MODE
         return photo_mode_image_quality;
@@ -95,7 +104,7 @@ struct ModSettings {
 #endif
     }
 
-    static void initialize();
+    static void initialize(std::string_view settings_name);
     static ModSettings* get_instance();
 
     void load();

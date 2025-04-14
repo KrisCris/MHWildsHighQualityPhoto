@@ -5,6 +5,7 @@
 #include "ModSettings.hpp"
 
 #include <fstream>
+#include <format>
 
 std::unique_ptr<WebPCaptureInjector> webp_capture_injector_instance = nullptr;
 
@@ -56,9 +57,10 @@ void WebPCaptureInjector::post_start_update_save_capture(void** ret_val, REFrame
     } else {
         SaveCaptureState capture_state = static_cast<SaveCaptureState>(*capture_state_ptr);
 
-        if (capture_state >= SAVECAPTURESTATE_START && !webp_capture_injector_instance->has_request_capture) {
+        if (capture_state >= SAVECAPTURESTATE_START && webp_capture_injector_instance->inject_pending && !webp_capture_injector_instance->has_request_capture) {
             webp_capture_injector_instance->has_request_capture = true;
             webp_capture_injector_instance->is_capture_done = false;
+            webp_capture_injector_instance->inject_pending = false;
 
             if (webp_capture_injector_instance->client) {
                 auto func = std::bind(&WebPCaptureInjector::on_client_provide_webp_data, webp_capture_injector_instance.get(), std::placeholders::_1,
@@ -104,14 +106,16 @@ void WebPCaptureInjector::post_start_update_save_capture(void** ret_val, REFrame
                         buffer[i] = original_capture_data->call<std::uint8_t>("Get", vm_context, original_capture_data, i);
                     }
     
-                    static const char *DEBUG_FILE_NAME = "reframework/data/MHWilds_HighQualityPhotoMod_OriginalImage.webp";
+                    static constexpr const char *DEBUG_FILE_NAME_FORMAT = "reframework/data/MHWilds_HighQualityPhotoMod_OriginalImage_{}.webp";
+                    std::string debug_file_name = std::format(DEBUG_FILE_NAME_FORMAT, mod_settings->debug_file_postfix);
+
                     auto persistent_dir = REFramework::get_persistent_dir();
 
                     if (!std::filesystem::exists(persistent_dir)) {
                         std::filesystem::create_directories(persistent_dir);
                     }
 
-                    auto debug_path = persistent_dir/ DEBUG_FILE_NAME;
+                    auto debug_path = persistent_dir/ debug_file_name;
 
                     std::ofstream original(debug_path.string(), std::istream::out | std::istream::binary);
                     original.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
@@ -396,7 +400,7 @@ WebPCaptureInjector::WebPCaptureInjector(reframework::API *api)
     }
 
     update_save_capture_method->add_hook(pre_start_update_save_capture, post_start_update_save_capture, false);
-    hook_to_extend_webp_max_size();
+    //hook_to_extend_webp_max_size();
 }
 
 void WebPCaptureInjector::hook_to_extend_webp_max_size() {

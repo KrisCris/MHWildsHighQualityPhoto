@@ -6,18 +6,21 @@
 #include "REFrameworkBorrowedAPI.hpp"
 #include <reframework/API.hpp>
 
-static const std::string JSON_FILE_NAME = "mhwilds_high_quality_photos.json";
+static const std::string JSON_FILE_NAME_DEFAULT = "mhwilds_high_quality_photos.json";
 static const std::string DATA_FOLDER = "reframework/data";
 
 std::unique_ptr<ModSettings> mod_settings_instance = nullptr;
+std::string json_file_name = JSON_FILE_NAME_DEFAULT;
 
 static std::filesystem::path get_settings_path() {
     auto persistent_dir = REFramework::get_persistent_dir();
-    return persistent_dir / DATA_FOLDER / JSON_FILE_NAME;
+    return persistent_dir / DATA_FOLDER / json_file_name;
 }
 
-void ModSettings::initialize() {
+void ModSettings::initialize(std::string_view settings_name) {
     if (mod_settings_instance == nullptr) {
+        json_file_name = std::format("{}.json", settings_name.data());
+
         mod_settings_instance = std::make_unique<ModSettings>();
         mod_settings_instance->load();
     }

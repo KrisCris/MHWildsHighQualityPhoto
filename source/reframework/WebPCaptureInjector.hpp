@@ -22,6 +22,8 @@ private:
     std::atomic_bool is_capture_done = true;
     bool has_injected = false;
     bool is_requesting_photo_save = false;
+    bool request_processed = false;
+    bool inject_pending = false;
 
     reframework::API::ManagedObject *csave_obj = nullptr;
 
@@ -75,5 +77,9 @@ public:
 
     void set_inject_client(WebPCaptureInjectClient *client) {
         this->client = client;
+    }
+
+    void set_inject_pending() {
+        this->inject_pending = true;
     }
 };

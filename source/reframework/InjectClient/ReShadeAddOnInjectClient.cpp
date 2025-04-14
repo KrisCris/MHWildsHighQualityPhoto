@@ -63,7 +63,7 @@ static const char *SET_RESHADE_FILTERS_ENABLE = "set_reshade_filters_enable";
 const float QUALITY_REDUCE_STEP = 10.0f;
 const float MIN_QUALITY_PHOTO = 10.0f;
 
-const int HIDE_UI_FRAMES_COUNT = 6;
+const int HIDE_UI_FRAMES_COUNT_MIN = 6;
 const float START_CAPTURE_AFTER_HIDE_REACHED_PROGRESS = 0.5f;
 
 // NOTE: Change depends on monitor if needed
@@ -113,9 +113,15 @@ bool ReShadeAddOnInjectClient::provide_webp_data(bool is16x9, ProvideFinishedDat
         return false;
     }
 
+    if (!is_requested) {
+        return false;
+    }
+
     if (provide_data_finish_callback == nullptr) {
         return false;
     }
+
+    is_requested = false;
 
     auto game_ui_controller = GameUIController::get_instance();
     if (game_ui_controller == nullptr) {
@@ -127,7 +133,10 @@ bool ReShadeAddOnInjectClient::provide_webp_data(bool is16x9, ProvideFinishedDat
     this->is_16x9 = is16x9;
     this->request_launched = false;
 
-    game_ui_controller->hide_for(HIDE_UI_FRAMES_COUNT);
+    auto mod_settings = ModSettings::get_instance();
+    game_ui_controller->hide_for(std::max<int>(HIDE_UI_FRAMES_COUNT_MIN, std::round(
+        static_cast<float>(mod_settings->hide_ui_before_capture_frame_count) / START_CAPTURE_AFTER_HIDE_REACHED_PROGRESS)));
+
     return true;
 }
 
