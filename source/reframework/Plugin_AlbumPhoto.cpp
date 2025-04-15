@@ -151,10 +151,13 @@ Plugin_QuestResult *Plugin_QuestResult::get_instance() {
     return plugin_instance ? plugin_instance.get() : nullptr;
 }
 
+#define REFRAMEWORK_PLUGIN_VERSION_MINOR_OLD 10
+#define REFRAMEWORK_PLUGIN_VERSION_PATCH_OLD 0
+
 extern "C" __declspec(dllexport) void reframework_plugin_required_version(REFrameworkPluginVersion* version) {
     version->major = REFRAMEWORK_PLUGIN_VERSION_MAJOR;
-    version->minor = REFRAMEWORK_PLUGIN_VERSION_MINOR;
-    version->patch = REFRAMEWORK_PLUGIN_VERSION_PATCH;
+    version->minor = REFRAMEWORK_PLUGIN_VERSION_MINOR_OLD;
+    version->patch = REFRAMEWORK_PLUGIN_VERSION_PATCH_OLD;
 
     // Optionally, specify a specific game name that this plugin is compatible with.
     version->game_name = "MHWILDS";
