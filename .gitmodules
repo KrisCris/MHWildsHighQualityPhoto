@@ -10,3 +10,12 @@
 [submodule "external/thread-pool"]
 	path = external/thread-pool
 	url = https://github.com/bshoshany/thread-pool
+[submodule "nativefiledialog-extended"]
+	path = external/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended
+[submodule "subprocess.h"]
+	path = external/subprocess.h
+	url = https://github.com/sheredom/subprocess.h
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/nothings/stb
