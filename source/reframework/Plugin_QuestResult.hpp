@@ -38,6 +38,9 @@ private:
     static int pre_quest_cancel_hook(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
     static void post_quest_cancel_hook(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr);
 
+    static int pre_save_capture_photo_hook(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
+    static void post_save_capture_photo_hook(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr);
+
 public:
     explicit Plugin_QuestResult(const REFrameworkPluginInitializeParam *params);
     ~Plugin_QuestResult() = default;

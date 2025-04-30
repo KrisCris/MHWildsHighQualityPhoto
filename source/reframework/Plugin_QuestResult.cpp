@@ -15,6 +15,7 @@
 #include "InjectClient/ReShadeAddOnInjectClient.hpp"
 #include "WebPCaptureInjector.hpp"
 #include "REFrameworkBorrowedAPI.hpp"
+#include "CaptureResolutionInject.hpp"
 
 #include "GameUIController.hpp"
 
@@ -85,8 +86,13 @@ void Plugin_QuestResult::decide_and_set_screen_cap_or_override_inject(std::uniqu
         }
     }
 
+    auto resolution_inject = CaptureResolutionInject::get_instance();
+
     if (!is_overriden) {
         reshade_addon_client->set_requested();
+        resolution_inject->update_resolution();
+    } else {
+        resolution_inject->revert();
     }
 
     injector->set_inject_pending();
@@ -152,6 +158,19 @@ void Plugin_QuestResult::post_quest_cancel_hook(void** ret_val, REFrameworkTypeD
 
 }
 
+int Plugin_QuestResult::pre_save_capture_photo_hook(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
+    auto resolution_inject = CaptureResolutionInject::get_instance();
+    if (resolution_inject != nullptr) {
+        resolution_inject->revert();
+    }
+
+    return REFRAMEWORK_HOOK_CALL_ORIGINAL;
+}
+
+void Plugin_QuestResult::post_save_capture_photo_hook(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr) {
+    // No operation
+}
+
 void Plugin_QuestResult::update() {
     auto game_ui_controller_instance = GameUIController::get_instance();
     if (game_ui_controller_instance != nullptr) {
@@ -211,7 +230,7 @@ void Plugin_QuestResult::draw_user_interface() {
         }*/
 
         if (igTreeNode_Str("General")) {
-            igCheckbox("Disable Mod ##DisableMod", &mod_settings->disable_mod);
+            igCheckbox("Disable Mod ##DisableModHQQuestBg", &mod_settings->disable_mod);
 
             igText("HDR Bits");
             if (igIsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -301,6 +320,13 @@ void Plugin_QuestResult::draw_user_interface() {
             }
 
             igText("Path to WebP: <GameDir>/reframework/data/MHWilds_HighQualityPhotoMod_OriginalImage_QuestResult.webp");
+
+            igCheckbox("Dump Mod-Captured PNG image##DumPngImageQR", &mod_settings->dump_mod_png);
+            if (igIsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                igSetTooltip("This will dump the the PNG screenshot the mod captured to the game directory.");
+            }
+
+            igText("Path to WebP: <GameDir>/reframework/data/MHWilds_HighQualityPhotoMod_HighQuality_QuestResult.png");
             igTreePop();
         }
 
@@ -327,6 +353,9 @@ Plugin_QuestResult::Plugin_QuestResult(const REFrameworkPluginInitializeParam *p
     auto quest_cancel_method = tdb->find_method("app.cQuestCancel", "enter");
     quest_cancel_method->add_hook(pre_quest_cancel_hook, post_quest_cancel_hook, false);
 
+    auto save_capture_method = tdb->find_method("app.AlbumManager", "saveCapturePhoto");
+    save_capture_method->add_hook(pre_save_capture_photo_hook, post_save_capture_photo_hook, false);
+
     quest_success_force_client = std::make_unique<FileInjectClient>();
     quest_failure_force_client = std::make_unique<FileInjectClient>();
     quest_cancel_force_client = std::make_unique<FileInjectClient>();
@@ -348,6 +377,7 @@ void Plugin_QuestResult::initialize(const REFrameworkPluginInitializeParam *para
 
     GameUIController::initialize(params);
     ReShadeAddOnInjectClient::initialize();
+    CaptureResolutionInject::initialize(api.get());
 }
 
 Plugin_QuestResult *Plugin_QuestResult::get_instance() {

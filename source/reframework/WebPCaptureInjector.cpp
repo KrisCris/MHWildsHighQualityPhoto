@@ -105,7 +105,7 @@ void WebPCaptureInjector::post_start_update_save_capture(void** ret_val, REFrame
                     for (int i = 0; i < length; i++) {
                         buffer[i] = original_capture_data->call<std::uint8_t>("Get", vm_context, original_capture_data, i);
                     }
-    
+
                     static constexpr const char *DEBUG_FILE_NAME_FORMAT = "reframework/data/MHWilds_HighQualityPhotoMod_OriginalImage_{}.webp";
                     std::string debug_file_name = std::format(DEBUG_FILE_NAME_FORMAT, mod_settings->debug_file_postfix);
 

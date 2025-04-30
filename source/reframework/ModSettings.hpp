@@ -54,6 +54,8 @@ struct ModSettings {
 
     bool dump_original_webp = false;
 
+    bool dump_mod_png = false;
+
     bool disable_mod = false;
 
     int hide_ui_before_capture_frame_count = 6;
@@ -77,7 +79,8 @@ struct ModSettings {
             dump_original_webp != clone.dump_original_webp ||
             disable_mod != clone.disable_mod ||
             quest_result_hq_background_mode != clone.quest_result_hq_background_mode ||
-            hide_ui_before_capture_frame_count != clone.hide_ui_before_capture_frame_count;
+            hide_ui_before_capture_frame_count != clone.hide_ui_before_capture_frame_count ||
+            dump_mod_png != dump_mod_png;
     }
 
     bool is_high_quality_photo_mode_enabled() const {

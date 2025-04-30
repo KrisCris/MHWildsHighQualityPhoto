@@ -50,8 +50,8 @@ private:
     static void compress_webp_thread(std::uint8_t *data, int width, int height);
     static void capture_screenshot_callback(int result, int width, int height, void* data);
 
-    static int pre_action_controller_exec_action(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
-    static void post_action_controller_exec_action(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr);
+    static int pre_player_camera_controller_update_action(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
+    static void post_player_camera_controller_update_action(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr);
 
     static int pre_open_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);
     static int pre_close_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr);

@@ -3,6 +3,7 @@
 #include "../../reshade/Plugin.h"
 #include "../ModSettings.hpp"
 #include "../GameUIController.hpp"
+#include "../CaptureResolutionInject.hpp"
 
 #include <reframework/API.hpp>
 #include <webp/encode.h>
@@ -15,6 +16,10 @@
 #include <deque>
 #include <future>
 #include <fstream>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+#include "../REFrameworkBorrowedAPI.hpp"
 
 class avir_scale_thread_pool : public avir::CImageResizerThreadPool
 {
@@ -140,7 +145,7 @@ bool ReShadeAddOnInjectClient::provide_webp_data(bool is16x9, ProvideFinishedDat
     return true;
 }
 
-int ReShadeAddOnInjectClient::pre_action_controller_exec_action(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
+int ReShadeAddOnInjectClient::pre_player_camera_controller_update_action(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
     if (!reshade_addon_client_instance->end_slowmo_present()) {
         auto game_ui_controller = GameUIController::get_instance();
 
@@ -152,7 +157,7 @@ int ReShadeAddOnInjectClient::pre_action_controller_exec_action(int argc, void**
     return REFRAMEWORK_HOOK_CALL_ORIGINAL;
 }
 
-void ReShadeAddOnInjectClient::post_action_controller_exec_action(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr) {
+void ReShadeAddOnInjectClient::post_player_camera_controller_update_action(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr) {
 
 }
 
@@ -233,10 +238,17 @@ void ReShadeAddOnInjectClient::compress_webp_thread(std::uint8_t *data, int widt
     int force_size_width = FORCE_SIZE_WIDTH_16x9;
     int force_size_height = FORCE_SIZE_HEIGHT_16x9;
 
+    auto capture_resolution_inject = CaptureResolutionInject::get_instance();
+
     if (!reshade_addon_client_instance->is_photo_mode) {
-        if (!reshade_addon_client_instance->is_16x9) {
-            force_size_width = FORCE_SIZE_WIDTH_21x9;
-            force_size_height = FORCE_SIZE_HEIGHT_21x9;
+        if (reshade_addon_client_instance->is_16x9) {
+            auto resolution = capture_resolution_inject->get_current_resolution_16x9();
+            force_size_width = resolution.first;
+            force_size_height = resolution.second;
+        } else {
+            auto resolution = capture_resolution_inject->get_current_resolution_21x9();
+            force_size_width = resolution.first;
+            force_size_height = resolution.second;
         }
     }
 
@@ -304,6 +316,12 @@ void ReShadeAddOnInjectClient::compress_webp_thread(std::uint8_t *data, int widt
         std::vector<std::uint8_t> temp_buffer(result_temp, result_temp + result_size);
         api->log_info("Screenshot image encoded successfully, size: %zu bytes", result_size);
 
+#if 0
+        std::ofstream test_result("E:\\test_result.webp");
+        test_result.write(reinterpret_cast<const char*>(temp_buffer.data()), temp_buffer.size());
+        test_result.flush();
+        test_result.close();
+#endif
         reshade_addon_client_instance->finish_capture(true, &temp_buffer);
 
         WebPFree(result_temp);
@@ -316,6 +334,7 @@ void ReShadeAddOnInjectClient::compress_webp_thread(std::uint8_t *data, int widt
 
 void ReShadeAddOnInjectClient::capture_screenshot_callback(int result, int width, int height, void* data) {
     auto& api = reframework::API::get();
+    auto mod_settings = ModSettings::get_instance();
 
     if (result == RESULT_SCREEN_CAPTURE_SUCCESS) {
         if (data == nullptr) {
@@ -336,6 +355,21 @@ void ReShadeAddOnInjectClient::capture_screenshot_callback(int result, int width
         if (reshade_addon_client_instance->webp_compress_thread != nullptr) {
             reshade_addon_client_instance->webp_compress_thread->join();
             reshade_addon_client_instance->webp_compress_thread.reset();
+        }
+
+        if (mod_settings->dump_mod_png) {
+            auto persistent_dir = REFramework::get_persistent_dir();
+
+            static constexpr const char *DEBUG_FILE_NAME= "reframework/data/MHWilds_HighQualityPhotoMod_HighQuality_QuestResult.png";
+
+            if (!std::filesystem::exists(persistent_dir)) {
+                std::filesystem::create_directories(persistent_dir);
+            }
+
+            auto debug_path = persistent_dir / DEBUG_FILE_NAME;
+            auto debug_path_str = debug_path.string();
+
+            stbi_write_png(debug_path_str.c_str(), width, height, 4, data_copy, width * 4);
         }
 
         reshade_addon_client_instance->webp_compress_thread = std::make_unique<std::thread>(compress_webp_thread, data_copy, width, height);
@@ -406,9 +440,13 @@ int ReShadeAddOnInjectClient::pre_close_quest_result_ui(int argc, void** argv, R
 ReShadeAddOnInjectClient::ReShadeAddOnInjectClient() {
     auto &api = reframework::API::get();
 
-    auto action_controller_exec_action_method = api->tdb()->find_method("ace.cActionController", "execAction");
-    action_controller_exec_action_method->add_hook(pre_action_controller_exec_action,
-        post_action_controller_exec_action, false);
+    auto action_controller_exec_action_method2 = api->tdb()->find_method("app.PlayerCameraController", "updateAction");
+    action_controller_exec_action_method2->add_hook(pre_player_camera_controller_update_action,
+        post_player_camera_controller_update_action, false);
+
+    auto action_controller_exec_action_method = api->tdb()->find_method("app.PlayerCameraController", "<updateAction>g__exec|182_0(app.PlayerCameraController.ACTION_PART, System.Int32)");
+    action_controller_exec_action_method->add_hook(pre_player_camera_controller_update_action,
+        post_player_camera_controller_update_action, false);
 
     auto quest_result_start_method = api->tdb()->find_method("app.GUIFlowQuestResult.cContext", "onStartFlow");
     quest_result_start_method->add_hook(pre_open_quest_result_ui, null_post, false);

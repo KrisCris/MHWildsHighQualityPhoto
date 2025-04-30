@@ -1,0 +1,1 @@
+To add new resolution, modify the hex value at 0x10 and 0x14 offset (all of u32 type) of rtex file to be your target width and height.

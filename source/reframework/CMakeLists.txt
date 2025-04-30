@@ -3,6 +3,8 @@ set(MHWildsHQQuestResultPhoto_SOURCES
         "InjectClient/FileInjectClient.hpp"
         "InjectClient/ReShadeAddOnInjectClient.cpp"
         "InjectClient/ReShadeAddOnInjectClient.hpp"
+        "CaptureResolutionInject.cpp"
+        "CaptureResolutionInject.hpp"
         "CImGuiRouteFix.cpp"
         "GameUIController.cpp"
         "GameUIController.hpp"
@@ -21,6 +23,8 @@ set(MHWildsHQQuestResultPhoto_SOURCES
 set(MHWildsCustomAlbumPhoto_SOURCES
     "InjectClient/FileInjectClient.cpp"
     "InjectClient/FileInjectClient.hpp"
+    "CaptureResolutionInject.cpp"
+    "CaptureResolutionInject.hpp"
     "CImGuiRouteFix.cpp"
     "ModSettings.cpp"
     "ModSettings.hpp"
@@ -92,6 +96,7 @@ target_link_libraries(MHWildsHQQuestResultPhoto PUBLIC
     nfd
     avir
     thread-pool
+    stb
 )
 
 set_target_properties(MHWildsHQQuestResultPhoto PROPERTIES
