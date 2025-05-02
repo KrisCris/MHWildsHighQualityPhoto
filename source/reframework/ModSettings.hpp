@@ -58,6 +58,8 @@ struct ModSettings {
 
     bool disable_mod = false;
 
+    bool hide_chat_notification = true;
+
     int hide_ui_before_capture_frame_count = 6;
 
     std::string debug_file_postfix;
@@ -80,7 +82,8 @@ struct ModSettings {
             disable_mod != clone.disable_mod ||
             quest_result_hq_background_mode != clone.quest_result_hq_background_mode ||
             hide_ui_before_capture_frame_count != clone.hide_ui_before_capture_frame_count ||
-            dump_mod_png != dump_mod_png;
+            dump_mod_png != clone.dump_mod_png ||
+            hide_chat_notification != clone.hide_chat_notification;
     }
 
     bool is_high_quality_photo_mode_enabled() const {

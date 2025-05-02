@@ -1,24 +1,47 @@
 #include "GameUIController.hpp"
 #include "reframework/API.hpp"
+#include "ModSettings.hpp"
 #include <memory>
 
 using namespace reframework;
 
 std::unique_ptr<GameUIController> game_ui_controller_instance = nullptr;
 
-bool game_ui_controller_on_pre_gui_draw_element(void*, void*) {
+bool game_ui_controller_on_pre_gui_draw_element(void *obj_void, void* context) {
     if (game_ui_controller_instance == nullptr) {
         return true;
     }
 
     // Return true to draw the UI
-    return !game_ui_controller_instance->is_in_hide();
+    if (game_ui_controller_instance->is_in_hide()) {
+        return false;
+    }
+
+    auto settings = ModSettings::get_instance();
+
+    // Check for our lovely notification icon
+    if (game_ui_controller_instance->get_is_in_quest_result() && settings->hide_chat_notification) {
+        auto obj = reinterpret_cast<reframework::API::ManagedObject*>(obj_void);
+        auto game_obj = obj->call("get_GameObject", context, obj);
+
+        if (game_obj == game_ui_controller_instance->get_notification_gameobject()) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 GameUIController::GameUIController(const REFrameworkPluginInitializeParam* initialize_params) {
     if (initialize_params != nullptr) {
         initialize_params->functions->on_pre_gui_draw_element(game_ui_controller_on_pre_gui_draw_element);
     }
+
+    auto &api = reframework::API::get();
+    auto tdb = api->tdb();
+
+    auto on_awake_chat = tdb->find_method("app.GUI000020", "guiAwake");
+    on_awake_chat->add_hook(pre_gui000020_on_gui_awake, post_gui000020_on_gui_awake, false);
 }
 
 void GameUIController::hide_for(int frame_count) {
@@ -67,4 +90,19 @@ void GameUIController::update() {
             }
         }
     }
+}
+
+int GameUIController::pre_gui000020_on_gui_awake(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
+    if (game_ui_controller_instance) {
+        auto gui_comp = reinterpret_cast<reframework::API::ManagedObject*>(argv[1]);
+        auto game_object = gui_comp->call<reframework::API::ManagedObject*>("get_GameObject", argv[0], gui_comp);
+
+        game_ui_controller_instance->notification_GO = game_object;
+    }
+
+    return REFRAMEWORK_HOOK_CALL_ORIGINAL;
+}
+
+void GameUIController::post_gui000020_on_gui_awake(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr) {
+
 }

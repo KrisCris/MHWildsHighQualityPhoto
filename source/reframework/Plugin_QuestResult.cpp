@@ -171,6 +171,27 @@ void Plugin_QuestResult::post_save_capture_photo_hook(void** ret_val, REFramewor
     // No operation
 }
 
+int Plugin_QuestResult::pre_open_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
+    auto game_ui_controller = GameUIController::get_instance();
+    auto settings = ModSettings::get_instance();
+
+    auto &api = reframework::API::get();
+    game_ui_controller->set_is_in_quest_result(true);
+
+    return REFRAMEWORK_HOOK_CALL_ORIGINAL;
+}
+
+int Plugin_QuestResult::pre_close_quest_result_ui(int argc, void** argv, REFrameworkTypeDefinitionHandle* arg_tys, unsigned long long ret_addr) {
+    auto game_ui_controller = GameUIController::get_instance();
+    game_ui_controller->set_is_in_quest_result(false);
+
+    return REFRAMEWORK_HOOK_CALL_ORIGINAL;
+}
+
+void Plugin_QuestResult::null_post(void** ret_val, REFrameworkTypeDefinitionHandle ret_ty, unsigned long long ret_addr) {
+    // No operation
+}
+
 void Plugin_QuestResult::update() {
     auto game_ui_controller_instance = GameUIController::get_instance();
     if (game_ui_controller_instance != nullptr) {
@@ -310,6 +331,11 @@ void Plugin_QuestResult::draw_user_interface() {
             igTextWrapped("The amount of frames from when the mod requesting the game to hide the UI, to when the UI is actually hidden on the screen, may be inconsistent.");
             igTextWrapped("If the UI is included in your quest result, try increase this value higher until you no longer sees the UI in your quest result background.");
 
+            igCheckbox("Hide Chat Notification", &mod_settings->hide_chat_notification);
+            if (igIsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                igSetTooltip("Hide the chat icon on the top-right of your quest result screen");
+            }
+
             igTreePop();
         }
 
@@ -355,6 +381,12 @@ Plugin_QuestResult::Plugin_QuestResult(const REFrameworkPluginInitializeParam *p
 
     auto save_capture_method = tdb->find_method("app.AlbumManager", "saveCapturePhoto");
     save_capture_method->add_hook(pre_save_capture_photo_hook, post_save_capture_photo_hook, false);
+
+    auto quest_result_start_method = api->tdb()->find_method("app.GUIFlowQuestResult.cContext", "onStartFlow");
+    quest_result_start_method->add_hook(pre_open_quest_result_ui, null_post, false);
+
+    auto quest_result_end_method = api->tdb()->find_method("app.GUIFlowQuestResult.cContext", "onEndFlow");
+    quest_result_end_method->add_hook(pre_close_quest_result_ui, null_post, false);
 
     quest_success_force_client = std::make_unique<FileInjectClient>();
     quest_failure_force_client = std::make_unique<FileInjectClient>();
