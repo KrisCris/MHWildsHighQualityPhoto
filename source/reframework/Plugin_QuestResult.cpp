@@ -336,6 +336,11 @@ void Plugin_QuestResult::draw_user_interface() {
                 igSetTooltip("Hide the chat icon on the top-right of your quest result screen");
             }
 
+            igCheckbox("Fix Quest Result Brightness", &mod_settings->auto_fix_quest_result_brightness);
+            if (igIsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                igSetTooltip("This will temporarily revert the UI brightness to neutral, until you exit the quest result screen, so that the quest result image is displayed with the same color tone as gameplay.");
+            }
+
             igTreePop();
         }
 

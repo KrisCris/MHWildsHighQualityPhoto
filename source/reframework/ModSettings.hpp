@@ -64,6 +64,11 @@ struct ModSettings {
 
     std::string debug_file_postfix;
 
+    // If the UI has lower brightness on HDR or your brightness is not set to balanced on SDR, the quest result will
+    // look a bit darker. This option reverts the UI's brightness to balanced so that the quest result image is displayed
+    // correctly
+    bool auto_fix_quest_result_brightness = true;
+
     bool data_changed(const ModSettings &clone) {
         return enable_override_album_image != clone.enable_override_album_image ||
             override_album_image_path != clone.override_album_image_path ||
@@ -83,7 +88,8 @@ struct ModSettings {
             quest_result_hq_background_mode != clone.quest_result_hq_background_mode ||
             hide_ui_before_capture_frame_count != clone.hide_ui_before_capture_frame_count ||
             dump_mod_png != clone.dump_mod_png ||
-            hide_chat_notification != clone.hide_chat_notification;
+            hide_chat_notification != clone.hide_chat_notification ||
+            auto_fix_quest_result_brightness != clone.auto_fix_quest_result_brightness;
     }
 
     bool is_high_quality_photo_mode_enabled() const {
