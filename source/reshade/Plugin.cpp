@@ -10,6 +10,9 @@
 
 #include "Plugin.h"
  
+extern "C" __declspec(dllexport) const char *NAME = "High Quality Kill Screen Capturer";
+extern "C" __declspec(dllexport) const char *DESCRIPTION = "Take a screenshot when you finish a quest, then send it to the game for displaying";
+
 reshade::api::effect_runtime *current_reshade_runtime = nullptr;
 reshade::api::swapchain *current_swapchain = nullptr;
 
@@ -49,6 +52,8 @@ static void hdr_convert_thread(std::uint8_t * pixels, std::uint32_t width, std::
     auto temp_path_string = temp_path.string();
     auto temp_path_wstring = temp_path.wstring();
     
+    reshade::log::message(reshade::log::level::debug, "Write HDR screenshot to disk");
+
     if (!sk_hdr_png::write_image_to_disk(temp_path_wstring.c_str(),
         width, height,
         reinterpret_cast<void*>(pixels),
@@ -62,6 +67,8 @@ static void hdr_convert_thread(std::uint8_t * pixels, std::uint32_t width, std::
     }
     else {
         delete[] pixels; // Clean up the allocated memory after use
+
+        reshade::log::message(reshade::log::level::debug, "Call HDR fix to convert to SDR");
 
         // Call a program to convert it to friendly SDR PNG
         auto original_dll_containing_path = std::filesystem::path(get_current_dll_path()).parent_path().parent_path();
@@ -82,6 +89,8 @@ static void hdr_convert_thread(std::uint8_t * pixels, std::uint32_t width, std::
 
         int process_return_code = 0;
         subprocess_join(&subprocess, &process_return_code);
+
+        reshade::log::message(reshade::log::level::debug, "HDR convert finished");
 
         if (0 != process_return_code) {
             if (g_finish_callback) {
@@ -109,6 +118,8 @@ static void hdr_convert_thread(std::uint8_t * pixels, std::uint32_t width, std::
                 stbi_uc *data_result = stbi_load_from_memory(data.data(), static_cast<int>(size), &width, &height, &comp, 4); // Assuming 4 bytes per pixel (RGBA)
             
                 if (data_result) {
+                    reshade::log::message(reshade::log::level::debug, "Reading HDR convert OK, sending to callback");
+
                     if (g_finish_callback) {
                         g_finish_callback(RESULT_SCREEN_CAPTURE_SUCCESS, width, height, data_result);
                     }
@@ -180,6 +191,8 @@ static void capture_screenshot_impl() {
     auto bytes_per_pixel = (format == reshade::api::format::r16g16b16a16_float) ? 8 : 4; // 4 bytes for RGBA, 8 bytes for HDR scRGB
     auto pixels = new uint8_t[width * height * bytes_per_pixel]; // Assuming 4 bytes per pixel (RGBA)
 
+    reshade::log::message(reshade::log::level::debug, "Start capturing screenshot");
+
     if (!current_reshade_runtime->capture_screenshot(pixels)) {
         if (g_finish_callback) {
             g_finish_callback(RESULT_SCREEN_RESHADE_CAPTURE_FAILURE, 0, 0, nullptr);
@@ -189,7 +202,11 @@ static void capture_screenshot_impl() {
         return;
     }
 
+    reshade::log::message(reshade::log::level::debug, "Capturing screenshot finished");
+
     if (!is_hdr) {
+        reshade::log::message(reshade::log::level::debug, "Screenshot is not HDR, sending it directly");
+
         if (g_finish_callback) {
             g_finish_callback(RESULT_SCREEN_CAPTURE_SUCCESS, width, height, pixels);
         }
@@ -197,6 +214,8 @@ static void capture_screenshot_impl() {
         g_finish_callback = nullptr; // Reset the callback to allow new requests
         return;
     } else {
+        reshade::log::message(reshade::log::level::debug, "Screenshot is HDR, launching conversion to SDR");
+
         // Launch a thread to convert the HDR image to SDR
         is_hdr_converting = true;
         std::thread(hdr_convert_thread, pixels, width, height, format, g_hdr_bit_depths).detach();
