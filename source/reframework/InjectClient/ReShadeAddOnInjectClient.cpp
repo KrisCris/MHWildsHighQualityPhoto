@@ -232,6 +232,10 @@ void ReShadeAddOnInjectClient::compress_webp_thread(std::uint8_t *data, int widt
         return;
     }
 
+#ifdef LOG_DEBUG_STEP
+    api->log_info("Compressing image data to WebP format");
+#endif
+
     std::vector<std::uint8_t> new_buffer_if_have;
     bool need_delete_data = true;
 
@@ -336,6 +340,10 @@ void ReShadeAddOnInjectClient::capture_screenshot_callback(int result, int width
     auto& api = reframework::API::get();
     auto mod_settings = ModSettings::get_instance();
 
+#ifdef LOG_DEBUG_STEP
+    api->log_info("Capture screenshot callback called with result: %d, width: %d, height: %d", result, width, height);
+#endif
+
     if (result == RESULT_SCREEN_CAPTURE_SUCCESS) {
         if (data == nullptr) {
             api->log_info("ReShade's screenshot data is null");
@@ -350,7 +358,7 @@ void ReShadeAddOnInjectClient::capture_screenshot_callback(int result, int width
         // Clear alpha channels
         for (int i = 0; i < width * height; ++i) {
             data_copy[i * 4 + 3] = 0xFF; // Set alpha channel to 255 (opaque)
-        } 
+        }
 
         if (reshade_addon_client_instance->webp_compress_thread != nullptr) {
             reshade_addon_client_instance->webp_compress_thread->join();
@@ -371,6 +379,10 @@ void ReShadeAddOnInjectClient::capture_screenshot_callback(int result, int width
 
             stbi_write_png(debug_path_str.c_str(), width, height, 4, data_copy, width * 4);
         }
+
+#ifdef LOG_DEBUG_STEP
+        api->log_info("Calling WebP compress thread");
+#endif
 
         reshade_addon_client_instance->webp_compress_thread = std::make_unique<std::thread>(compress_webp_thread, data_copy, width, height);
     } else {
